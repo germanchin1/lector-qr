@@ -337,16 +337,13 @@
   </head>
   <body>
     <div id="app"></div>
-    <script type="module">
-      import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
+    <script>
       const STORAGE_KEY = 'lector-qr:last-scan'
       const HISTORY_KEY = 'lector-qr:history'
       const MAX_HISTORY = 6
-      const SUPABASE_URL = 'https://nchfongntpnbhlnmuwpr.supabase.co'
-      const SUPABASE_ANON_KEY = 'sb_publishable_bHfu1gBERonn2ATMM5nYdw_X65P0Esu'
       const ROOM_NAME = 'lector-principal'
       const ROW_ID = ROOM_NAME
+      const API_PATH = `/api/scan-state?room=${encodeURIComponent(ROOM_NAME)}`
 
       const app = document.querySelector('#app')
 
@@ -402,9 +399,9 @@
       const historyList = document.querySelector('#history-list')
       const statusChip = document.querySelector('#status-chip')
 
-      let supabaseClient = null
-      let realtimeChannel = null
       let suppressLocalBroadcast = false
+      let pollTimer = null
+      let lastSeenValue = ''
 
       const readHistory = () => {
         try {
@@ -414,15 +411,6 @@
         } catch {
           return []
         }
-      }
-
-      const getClient = () => {
-        if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('PEGA_AQUI') || SUPABASE_ANON_KEY.includes('PEGA_AQUI')) {
-          throw new Error('Faltan la URL o la anon key de Supabase.')
-        }
-
-        supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-        return { client: supabaseClient, room: ROOM_NAME }
       }
 
       const rememberScan = (value) => {
@@ -467,6 +455,35 @@
         }
       }
 
+      const fetchSharedValue = async () => {
+        const response = await fetch(API_PATH, {
+          headers: {
+            'Accept': 'application/json',
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error('No se pudo leer el valor compartido.')
+        }
+
+        const data = await response.json()
+        return typeof data?.value === 'string' ? data.value : ''
+      }
+
+      const saveSharedValue = async (value) => {
+        const response = await fetch(API_PATH, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ value }),
+        })
+
+        if (!response.ok) {
+          throw new Error('No se pudo guardar el valor compartido.')
+        }
+      }
+
       const renderHistory = () => {
         const history = readHistory()
         historyList.innerHTML = ''
@@ -506,24 +523,13 @@
       }
 
       const pushRemoteValue = async (value) => {
-        const clientData = supabaseClient ? { client: supabaseClient, room: ROOM_NAME } : getClient()
         const trimmed = value.trim()
 
         if (!trimmed) {
           return
         }
 
-        const payload = {
-          id: clientData.room || ROW_ID,
-          value: trimmed,
-          updated_at: new Date().toISOString(),
-        }
-
-        const { error } = await clientData.client.from('scan_state').upsert(payload, { onConflict: 'id' })
-
-        if (error) {
-          throw error
-        }
+        await saveSharedValue(trimmed)
 
         rememberScan(trimmed)
       }
@@ -535,68 +541,52 @@
       }
 
       const loadRemoteState = async () => {
-        const clientData = supabaseClient ? { client: supabaseClient, room: ROOM_NAME } : getClient()
-        const { data, error } = await clientData.client.from('scan_state').select('value').eq('id', clientData.room || ROW_ID).maybeSingle()
+        const value = await fetchSharedValue()
 
-        if (error) {
-          throw error
-        }
-
-        if (data?.value) {
-          applyRemoteState(data.value)
-          rememberScan(data.value)
+        if (value) {
+          applyRemoteState(value)
+          rememberScan(value)
+          lastSeenValue = value
         }
       }
 
-      const disconnectRealtime = () => {
-        if (realtimeChannel && supabaseClient) {
-          supabaseClient.removeChannel(realtimeChannel)
+      const stopPolling = () => {
+        if (pollTimer) {
+          clearInterval(pollTimer)
         }
 
-        realtimeChannel = null
+        pollTimer = null
       }
 
-      const connectRealtime = async () => {
-        const { client, room } = getClient()
-
-        disconnectRealtime()
+      const startPolling = async () => {
+        stopPolling()
 
         await loadRemoteState()
 
-        realtimeChannel = client
-          .channel(`scan-state:${room}`)
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'scan_state',
-              filter: `id=eq.${room}`,
-            },
-            (payload) => {
-              const nextValue = payload.new?.value ?? ''
-              if (nextValue) {
-                applyRemoteState(nextValue)
-                rememberScan(nextValue)
-                setStatus('En vivo', 'success')
-              }
-            },
-          )
-          .subscribe((state) => {
-            if (state === 'SUBSCRIBED') {
+        pollTimer = window.setInterval(async () => {
+          try {
+            const nextValue = await fetchSharedValue()
+
+            if (nextValue && nextValue !== lastSeenValue) {
+              lastSeenValue = nextValue
+              applyRemoteState(nextValue)
+              rememberScan(nextValue)
               setStatus('En vivo', 'success')
             }
-          })
+          } catch {
+            setStatus('Sin conexión', 'warning')
+          }
+        }, 700)
 
-        return true
+        setStatus('En vivo', 'success')
       }
 
       input.value = localStorage.getItem(STORAGE_KEY) ?? ''
       syncValue(input.value, false)
       renderHistory()
 
-      connectRealtime().catch(() => {
-        setStatus('Configura Supabase', 'warning')
+      startPolling().catch(() => {
+        setStatus('Sin conexión', 'warning')
       })
 
       input.addEventListener('input', (event) => {
@@ -641,6 +631,8 @@
         localStorage.removeItem(HISTORY_KEY)
         renderHistory()
       })
+
+      window.addEventListener('beforeunload', stopPolling)
 
       input.focus()
     </script>

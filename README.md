@@ -1,6 +1,8 @@
 # Lector rápido
 
-Página web sin instalación para pegar un código en el móvil y verlo al instante en el PC con sincronización en tiempo real.
+Página web sin instalación para pegar un código en el móvil y verlo al instante en el PC.
+
+Ahora el navegador no llama directo a Supabase: Vercel usa una ruta `/api/scan-state` como proxy, que evita el bloqueo CORS.
 
 ## Uso local
 
@@ -32,28 +34,23 @@ create policy "Allow public update" on public.scan_state
 for update using (true);
 ```
 
-3. Abre `index.html` y sustituye estas constantes:
-	- `SUPABASE_URL`
-	- `SUPABASE_ANON_KEY`
-	- `ROOM_NAME`
-4. Sube el archivo a Vercel y abre la misma URL en ambos dispositivos.
+3. Sube el proyecto a Vercel con la carpeta raíz completa, incluyendo `index.html`, `api/scan-state.js` y `vercel.json`.
+4. No uses un despliegue estático suelto ni subas solo `index.html`; la carpeta `api/` tiene que ir dentro del proyecto.
+5. Abre la misma URL en ambos dispositivos.
 
 ## Dónde encontrar los datos
 
 ### `Supabase URL`
 
-La encuentras en Supabase dentro de `Project Settings` > `API`.
-Suele verse como `https://xxxx.supabase.co`.
+La usa el archivo `api/scan-state.js`.
 
 ### `Supabase anon key`
 
-Está en la misma pantalla, en `Project Settings` > `API`, dentro de `Project API keys`.
-Usa la clave pública `anon public`, no la `service_role`.
+La usa el archivo `api/scan-state.js`.
 
 ### `Nombre de la sala`
 
-Es cualquier texto que tú inventes, por ejemplo `lector-principal`.
-Debe ser exactamente el mismo en el móvil y en el PC para que vean el mismo código.
+Ahora está fijado como `lector-principal` en `api/scan-state.js`.
 
 ## Qué hace
 
