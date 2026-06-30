@@ -337,14 +337,17 @@
   </head>
   <body>
     <div id="app"></div>
-    <script>
+    <script type="module">
+      import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
       const STORAGE_KEY = 'lector-qr:last-scan'
       const HISTORY_KEY = 'lector-qr:history'
       const MAX_HISTORY = 6
+      const SUPABASE_URL = 'https://nchfongntpnbhlnmuwpr.supabase.co'
+      const SUPABASE_ANON_KEY = 'sb_publishable_bHfu1gBERonn2ATMM5nYdw_X65P0Esu'
       const ROOM_NAME = 'lector-principal'
-      const ROW_ID = ROOM_NAME
-      const API_PATH = `/api/scan-state?room=${encodeURIComponent(ROOM_NAME)}`
 
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
       const app = document.querySelector('#app')
 
       app.innerHTML = `
@@ -399,9 +402,8 @@
       const historyList = document.querySelector('#history-list')
       const statusChip = document.querySelector('#status-chip')
 
-      let suppressLocalBroadcast = false
-      let pollTimer = null
-      let lastSeenValue = ''
+      let channel = null
+      let suppressBroadcast = false
 
       const readHistory = () => {
         try {
@@ -455,35 +457,6 @@
         }
       }
 
-      const fetchSharedValue = async () => {
-        const response = await fetch(API_PATH, {
-          headers: {
-            'Accept': 'application/json',
-          },
-        })
-
-        if (!response.ok) {
-          throw new Error('No se pudo leer el valor compartido.')
-        }
-
-        const data = await response.json()
-        return typeof data?.value === 'string' ? data.value : ''
-      }
-
-      const saveSharedValue = async (value) => {
-        const response = await fetch(API_PATH, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ value }),
-        })
-
-        if (!response.ok) {
-          throw new Error('No se pudo guardar el valor compartido.')
-        }
-      }
-
       const renderHistory = () => {
         const history = readHistory()
         historyList.innerHTML = ''
@@ -522,81 +495,78 @@
         })
       }
 
-      const pushRemoteValue = async (value) => {
+      const applyRemoteState = (value) => {
+        suppressBroadcast = true
+        syncValue(value, true)
+        suppressBroadcast = false
+      }
+
+      const sendBroadcast = async (value) => {
         const trimmed = value.trim()
 
-        if (!trimmed) {
+        if (!trimmed || !channel) {
           return
         }
 
-        await saveSharedValue(trimmed)
-
-        rememberScan(trimmed)
+        await channel.send({
+          type: 'broadcast',
+          event: 'scan',
+          payload: { value: trimmed },
+        })
       }
 
-      const applyRemoteState = (value) => {
-        suppressLocalBroadcast = true
-        syncValue(value, true)
-        suppressLocalBroadcast = false
-      }
-
-      const loadRemoteState = async () => {
-        const value = await fetchSharedValue()
-
-        if (value) {
-          applyRemoteState(value)
-          rememberScan(value)
-          lastSeenValue = value
-        }
-      }
-
-      const stopPolling = () => {
-        if (pollTimer) {
-          clearInterval(pollTimer)
+      const connectRealtime = async () => {
+        if (channel) {
+          await supabase.removeChannel(channel)
         }
 
-        pollTimer = null
-      }
+        channel = supabase
+          .channel(ROOM_NAME)
+          .on('broadcast', { event: 'scan' }, ({ payload }) => {
+            const nextValue = typeof payload?.value === 'string' ? payload.value.trim() : ''
 
-      const startPolling = async () => {
-        stopPolling()
+            if (!nextValue) {
+              return
+            }
 
-        await loadRemoteState()
-
-        pollTimer = window.setInterval(async () => {
-          try {
-            const nextValue = await fetchSharedValue()
-
-            if (nextValue && nextValue !== lastSeenValue) {
-              lastSeenValue = nextValue
+            if (nextValue !== input.value.trim()) {
               applyRemoteState(nextValue)
               rememberScan(nextValue)
+            }
+
+            setStatus('En vivo', 'success')
+          })
+          .subscribe((state) => {
+            if (state === 'SUBSCRIBED') {
               setStatus('En vivo', 'success')
             }
-          } catch {
-            setStatus('Sin conexión', 'warning')
-          }
-        }, 700)
 
-        setStatus('En vivo', 'success')
+            if (state === 'CHANNEL_ERROR' || state === 'TIMED_OUT') {
+              setStatus('Sin conexión', 'warning')
+            }
+          })
       }
 
       input.value = localStorage.getItem(STORAGE_KEY) ?? ''
       syncValue(input.value, false)
       renderHistory()
 
-      startPolling().catch(() => {
+      connectRealtime().catch(() => {
         setStatus('Sin conexión', 'warning')
       })
 
-      input.addEventListener('input', (event) => {
+      input.addEventListener('input', () => {
         syncValue(input.value)
 
-        if (!suppressLocalBroadcast && (event instanceof InputEvent && event.inputType === 'insertFromPaste')) {
-          rememberScan(input.value)
-          pushRemoteValue(input.value).catch(() => {
-            setStatus('Sin conexión', 'warning')
-          })
+        if (!suppressBroadcast) {
+          const trimmed = input.value.trim()
+
+          if (trimmed) {
+            rememberScan(trimmed)
+            sendBroadcast(trimmed).catch(() => {
+              setStatus('Sin conexión', 'warning')
+            })
+          }
         }
       })
 
@@ -613,7 +583,7 @@
           await navigator.clipboard.writeText(value)
           setStatus('Copiado', 'success')
           rememberScan(value)
-          pushRemoteValue(value).catch(() => {
+          sendBroadcast(value).catch(() => {
             setStatus('Sin conexión', 'warning')
           })
         } catch {
@@ -632,7 +602,11 @@
         renderHistory()
       })
 
-      window.addEventListener('beforeunload', stopPolling)
+      window.addEventListener('beforeunload', async () => {
+        if (channel) {
+          await supabase.removeChannel(channel)
+        }
+      })
 
       input.focus()
     </script>
