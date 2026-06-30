@@ -32,12 +32,28 @@ create policy "Allow public update" on public.scan_state
 for update using (true);
 ```
 
-3. Abre `index.html` y rellena:
-	 - `Supabase URL`
-	 - `Supabase anon key`
-	 - `Nombre de la sala`
-4. Guarda la configuración en el móvil y en el PC usando los mismos datos.
-5. Sube el archivo a Vercel y abre la misma URL en ambos dispositivos.
+3. Abre `index.html` y sustituye estas constantes:
+	- `SUPABASE_URL`
+	- `SUPABASE_ANON_KEY`
+	- `ROOM_NAME`
+4. Sube el archivo a Vercel y abre la misma URL en ambos dispositivos.
+
+## Dónde encontrar los datos
+
+### `Supabase URL`
+
+La encuentras en Supabase dentro de `Project Settings` > `API`.
+Suele verse como `https://xxxx.supabase.co`.
+
+### `Supabase anon key`
+
+Está en la misma pantalla, en `Project Settings` > `API`, dentro de `Project API keys`.
+Usa la clave pública `anon public`, no la `service_role`.
+
+### `Nombre de la sala`
+
+Es cualquier texto que tú inventes, por ejemplo `lector-principal`.
+Debe ser exactamente el mismo en el móvil y en el PC para que vean el mismo código.
 
 ## Qué hace
 

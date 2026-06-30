@@ -253,52 +253,6 @@
         font-size: 0.92rem;
       }
 
-      .config-panel {
-        margin-top: 20px;
-        padding: 22px;
-      }
-
-      .config-grid {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
-        margin-top: 16px;
-      }
-
-      .config-grid input {
-        width: 100%;
-        padding: 12px 14px;
-        border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        background: rgba(7, 12, 24, 0.86);
-        color: #fff;
-        outline: none;
-      }
-
-      .config-grid input::placeholder {
-        color: rgba(245, 247, 251, 0.38);
-      }
-
-      .config-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-top: 14px;
-      }
-
-      .notice {
-        margin-top: 14px;
-        padding: 12px 14px;
-        border-radius: 16px;
-        background: rgba(127, 177, 255, 0.12);
-        color: rgba(245, 247, 251, 0.92);
-        font-size: 0.92rem;
-      }
-
-      .notice strong {
-        color: #fff;
-      }
-
       .history-panel {
         margin-top: 20px;
       }
@@ -378,10 +332,6 @@
         .history-copy {
           font-size: 0.8rem;
         }
-
-        .config-grid {
-          grid-template-columns: 1fr;
-        }
       }
     </style>
   </head>
@@ -393,8 +343,10 @@
       const STORAGE_KEY = 'lector-qr:last-scan'
       const HISTORY_KEY = 'lector-qr:history'
       const MAX_HISTORY = 6
-      const CONFIG_KEY = 'lector-qr:supabase-config'
-      const ROW_ID = 'main'
+      const SUPABASE_URL = 'https://nchfongntpnbhlnmuwpr.supabase.co'
+      const SUPABASE_ANON_KEY = 'sb_publishable_bHfu1gBERonn2ATMM5nYdw_X65P0Esu'
+      const ROOM_NAME = 'lector-principal'
+      const ROW_ID = ROOM_NAME
 
       const app = document.querySelector('#app')
 
@@ -426,28 +378,9 @@
               </div>
               <output id="scan-output" class="scan-output" aria-live="polite">Pega un código para verlo aquí.</output>
               <div class="meta">
-                <span>Se sincroniza en tiempo real entre todos los dispositivos con la misma configuración.</span>
+                <span>Se sincroniza en tiempo real entre todos los dispositivos con la misma sala.</span>
                 <span>Haz clic en un elemento del historial para recuperarlo.</span>
               </div>
-            </div>
-          </section>
-
-          <section class="panel config-panel">
-            <div class="panel-head">
-              <span class="field-label">Sincronización Supabase</span>
-              <span id="connection-chip" class="chip">Sin configurar</span>
-            </div>
-            <div class="config-grid">
-              <input id="supabase-url" type="url" placeholder="Supabase URL" />
-              <input id="supabase-key" type="password" placeholder="Supabase anon key" />
-              <input id="room-name" type="text" placeholder="Nombre de la sala" value="lector-principal" />
-            </div>
-            <div class="config-actions">
-              <button id="save-config" class="primary" type="button">Guardar configuración</button>
-              <button id="connect-button" class="secondary" type="button">Conectar ahora</button>
-            </div>
-            <div class="notice">
-              <strong>Importante:</strong> en el móvil y en el PC usa la misma URL, la misma key y el mismo nombre de sala.
             </div>
           </section>
 
@@ -468,12 +401,6 @@
       const clearHistoryButton = document.querySelector('#clear-history')
       const historyList = document.querySelector('#history-list')
       const statusChip = document.querySelector('#status-chip')
-      const connectionChip = document.querySelector('#connection-chip')
-      const supabaseUrlInput = document.querySelector('#supabase-url')
-      const supabaseKeyInput = document.querySelector('#supabase-key')
-      const roomNameInput = document.querySelector('#room-name')
-      const saveConfigButton = document.querySelector('#save-config')
-      const connectButton = document.querySelector('#connect-button')
 
       let supabaseClient = null
       let realtimeChannel = null
@@ -489,55 +416,13 @@
         }
       }
 
-      const setConnectionStatus = (message, tone = 'ready') => {
-        connectionChip.textContent = message
-        connectionChip.dataset.tone = tone
-      }
-
-      const getConfig = () => {
-        try {
-          const raw = localStorage.getItem(CONFIG_KEY)
-          return raw ? JSON.parse(raw) : null
-        } catch {
-          return null
-        }
-      }
-
-      const saveConfig = () => {
-        const config = {
-          url: supabaseUrlInput.value.trim(),
-          key: supabaseKeyInput.value.trim(),
-          room: roomNameInput.value.trim() || 'lector-principal',
-        }
-
-        localStorage.setItem(CONFIG_KEY, JSON.stringify(config))
-        setConnectionStatus('Configurado', 'success')
-        return config
-      }
-
-      const loadConfig = () => {
-        const config = getConfig()
-
-        if (!config) {
-          roomNameInput.value = 'lector-principal'
-          return null
-        }
-
-        supabaseUrlInput.value = config.url ?? ''
-        supabaseKeyInput.value = config.key ?? ''
-        roomNameInput.value = config.room ?? 'lector-principal'
-        return config
-      }
-
       const getClient = () => {
-        const config = saveConfig()
-
-        if (!config.url || !config.key) {
+        if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('PEGA_AQUI') || SUPABASE_ANON_KEY.includes('PEGA_AQUI')) {
           throw new Error('Faltan la URL o la anon key de Supabase.')
         }
 
-        supabaseClient = createClient(config.url, config.key)
-        return { client: supabaseClient, room: config.room }
+        supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        return { client: supabaseClient, room: ROOM_NAME }
       }
 
       const rememberScan = (value) => {
@@ -709,15 +594,10 @@
       input.value = localStorage.getItem(STORAGE_KEY) ?? ''
       syncValue(input.value, false)
       renderHistory()
-      loadConfig()
 
-      const initialConfig = getConfig()
-
-      if (initialConfig?.url && initialConfig?.key) {
-        connectRealtime().catch(() => {
-          setConnectionStatus('Sin conexión', 'warning')
-        })
-      }
+      connectRealtime().catch(() => {
+        setStatus('Configura Supabase', 'warning')
+      })
 
       input.addEventListener('input', (event) => {
         syncValue(input.value)
@@ -726,7 +606,6 @@
           rememberScan(input.value)
           pushRemoteValue(input.value).catch(() => {
             setStatus('Sin conexión', 'warning')
-            setConnectionStatus('Sin conexión', 'warning')
           })
         }
       })
@@ -745,7 +624,7 @@
           setStatus('Copiado', 'success')
           rememberScan(value)
           pushRemoteValue(value).catch(() => {
-            setConnectionStatus('Sin conexión', 'warning')
+            setStatus('Sin conexión', 'warning')
           })
         } catch {
           setStatus('No se pudo copiar', 'warning')
@@ -761,26 +640,6 @@
       clearHistoryButton.addEventListener('click', () => {
         localStorage.removeItem(HISTORY_KEY)
         renderHistory()
-      })
-
-      saveConfigButton.addEventListener('click', () => {
-        try {
-          saveConfig()
-          setStatus('Configuración guardada', 'success')
-          setConnectionStatus('Listo para conectar', 'ready')
-        } catch {
-          setStatus('Configura Supabase', 'warning')
-        }
-      })
-
-      connectButton.addEventListener('click', async () => {
-        try {
-          await connectRealtime()
-          setStatus('Conectado', 'success')
-        } catch {
-          setStatus('Revisa Supabase', 'warning')
-          setConnectionStatus('Sin conexión', 'warning')
-        }
       })
 
       input.focus()
