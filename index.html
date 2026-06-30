@@ -371,6 +371,7 @@
               <label class="field-label" for="scan-input">Último escaneo</label>
               <textarea id="scan-input" rows="4" spellcheck="false" placeholder="Pega aquí el código de barras o QR..."></textarea>
               <div class="actions">
+                <button id="paste-button" class="secondary" type="button">Pegar texto</button>
                 <button id="copy-button" class="primary" type="button">Copiar texto</button>
                 <button id="clear-button" class="secondary" type="button">Limpiar</button>
               </div>
@@ -399,6 +400,7 @@
 
       const input = document.querySelector('#scan-input')
       const output = document.querySelector('#scan-output')
+      const pasteButton = document.querySelector('#paste-button')
       const copyButton = document.querySelector('#copy-button')
       const clearButton = document.querySelector('#clear-button')
       const clearHistoryButton = document.querySelector('#clear-history')
@@ -632,6 +634,28 @@
           })
         } catch {
           setStatus('No se pudo copiar', 'warning')
+        }
+      })
+
+      pasteButton.addEventListener('click', async () => {
+        try {
+          const clipboardText = await navigator.clipboard.readText()
+          if (!clipboardText) {
+            setStatus('Portapapeles vacío', 'warning')
+            input.focus()
+            return
+          }
+
+          syncValue(clipboardText)
+          rememberScan(clipboardText)
+          sendValue(clipboardText).catch(() => {
+            setStatus('Sin conexión', 'warning')
+          })
+          setStatus('Pegado', 'success')
+          input.focus()
+        } catch {
+          setStatus('No se pudo pegar', 'warning')
+          input.focus()
         }
       })
 
