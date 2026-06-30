@@ -99,6 +99,26 @@
         align-items: center;
       }
 
+      .toggle-field {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text);
+        user-select: none;
+        cursor: pointer;
+      }
+
+      .toggle-field input {
+        width: 18px;
+        height: 18px;
+        margin: 0;
+        accent-color: var(--accent);
+      }
+
+      .toggle-field span {
+        font-size: 0.95rem;
+      }
+
       .workspace {
         display: grid;
         grid-template-columns: 1fr 0.78fr;
@@ -381,10 +401,10 @@
         <main class="shell">
           <div class="topbar">
             <div class="topbar-group">
-              <button id="lock-toggle" class="lock-button" type="button" aria-label="Bloquear escritura">
-                <span id="lock-icon">🔓</span>
-                <span id="lock-label">Escritura</span>
-              </button>
+              <label class="toggle-field" for="lock-toggle">
+                <input id="lock-toggle" type="checkbox" />
+                <span id="lock-label">Bloquear escritura</span>
+              </label>
             </div>
             <button id="theme-toggle" class="theme-button" type="button" aria-label="Cambiar tema">
               <span id="theme-icon">☾</span>
@@ -435,7 +455,6 @@
       const historyList = document.querySelector('#history-list')
       const statusChip = document.querySelector('#status-chip')
       const lockToggle = document.querySelector('#lock-toggle')
-      const lockIcon = document.querySelector('#lock-icon')
       const lockLabel = document.querySelector('#lock-label')
       const themeToggle = document.querySelector('#theme-toggle')
       const themeIcon = document.querySelector('#theme-icon')
@@ -448,9 +467,8 @@
       const applyWriteLock = (locked) => {
         const nextLocked = Boolean(locked)
         input.disabled = nextLocked
-        lockToggle.dataset.active = String(nextLocked)
-        lockIcon.textContent = nextLocked ? '🔒' : '🔓'
-        lockLabel.textContent = nextLocked ? 'Bloqueado' : 'Escritura'
+        lockToggle.checked = nextLocked
+        lockLabel.textContent = nextLocked ? 'Escritura bloqueada' : 'Bloquear escritura'
         localStorage.setItem('lector-qr:locked', String(nextLocked))
       }
 
@@ -711,8 +729,8 @@
         renderHistory()
       })
 
-      lockToggle.addEventListener('click', () => {
-        applyWriteLock(input.disabled)
+      lockToggle.addEventListener('change', () => {
+        applyWriteLock(lockToggle.checked)
       })
 
       themeToggle.addEventListener('click', () => {
