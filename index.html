@@ -10,26 +10,43 @@
     />
     <style>
       :root {
-        color-scheme: dark;
         font-family: "Segoe UI Variable", "Aptos", "Trebuchet MS", sans-serif;
         line-height: 1.5;
         font-weight: 400;
-        color: #f5f7fb;
-        background:
-          radial-gradient(circle at top, rgba(255, 196, 87, 0.2), transparent 32%),
-          radial-gradient(circle at right, rgba(93, 129, 255, 0.2), transparent 28%),
-          linear-gradient(135deg, #0a1020 0%, #0d1428 45%, #090d16 100%);
         font-synthesis: none;
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        --panel: rgba(10, 16, 32, 0.72);
-        --panel-border: rgba(255, 255, 255, 0.1);
-        --text-soft: rgba(245, 247, 251, 0.72);
-        --accent: #ffcc66;
-        --accent-strong: #7fb1ff;
-        --success: #77f0b6;
-        --warning: #ffd18a;
+        --surface: #f3f4f6;
+        --surface-2: #ffffff;
+        --surface-3: #e5e7eb;
+        --text: #111827;
+        --text-soft: #4b5563;
+        --accent: #2563eb;
+        --accent-strong: #1d4ed8;
+        --success: #16a34a;
+        --warning: #d97706;
+        --shadow: none;
+        --panel-border: #d1d5db;
+      }
+
+      body[data-theme='dark'] {
+        color-scheme: dark;
+        --surface: #111827;
+        --surface-2: #1f2937;
+        --surface-3: #374151;
+        --text: #f9fafb;
+        --text-soft: #cbd5e1;
+        --accent: #60a5fa;
+        --accent-strong: #93c5fd;
+        --success: #34d399;
+        --warning: #fbbf24;
+        --shadow: none;
+        --panel-border: #374151;
+      }
+
+      body[data-theme='light'] {
+        color-scheme: light;
       }
 
       * {
@@ -45,7 +62,8 @@
 
       body {
         min-height: 100vh;
-        background-attachment: fixed;
+        background: var(--surface);
+        color: var(--text);
       }
 
       button,
@@ -62,30 +80,35 @@
       }
 
       .shell {
-        width: min(1120px, calc(100% - 32px));
+        width: min(1024px, calc(100% - 24px));
         margin: 0 auto;
-        padding: 32px 0 40px;
+        padding: 20px 0 28px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-bottom: 14px;
       }
 
       .workspace {
         display: grid;
-        grid-template-columns: 1fr 0.8fr;
-        gap: 20px;
-        padding-top: 18px;
+        grid-template-columns: 1fr 0.78fr;
+        gap: 16px;
       }
 
       .panel {
         border: 1px solid var(--panel-border);
-        border-radius: 28px;
-        background: var(--panel);
-        backdrop-filter: blur(18px);
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+        border-radius: 20px;
+        background: var(--surface-2);
+        box-shadow: var(--shadow);
       }
 
       .editor-panel,
       .display-panel,
       .history-panel {
-        padding: 22px;
+        padding: 18px;
       }
 
       .field-label {
@@ -100,22 +123,22 @@
         min-height: 180px;
         margin-top: 14px;
         padding: 18px 20px;
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 22px;
-        background: rgba(7, 12, 24, 0.86);
-        color: #fff;
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
+        background: var(--surface-2);
+        color: var(--text);
         resize: vertical;
         outline: none;
         transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
       }
 
       #scan-input::placeholder {
-        color: rgba(245, 247, 251, 0.38);
+        color: var(--text-soft);
       }
 
       #scan-input:focus {
-        border-color: rgba(127, 177, 255, 0.55);
-        box-shadow: 0 0 0 4px rgba(127, 177, 255, 0.15);
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
       }
 
       .actions {
@@ -127,22 +150,23 @@
 
       .primary,
       .secondary,
-      .link-button {
+      .link-button,
+      .theme-button {
         border: 0;
-        border-radius: 999px;
-        padding: 12px 18px;
+        border-radius: 12px;
+        padding: 12px 16px;
         transition: transform 140ms ease, background 140ms ease, color 140ms ease, opacity 140ms ease;
       }
 
       .primary {
-        background: linear-gradient(135deg, var(--accent) 0%, #ff9f6e 100%);
-        color: #121212;
+        background: var(--accent);
+        color: #fff;
         font-weight: 700;
       }
 
       .secondary {
-        background: rgba(255, 255, 255, 0.08);
-        color: #fff;
+        background: var(--surface-3);
+        color: var(--text);
       }
 
       .link-button {
@@ -151,9 +175,15 @@
         color: var(--accent-strong);
       }
 
+      .theme-button {
+        background: var(--surface-3);
+        color: var(--text);
+      }
+
       .primary:hover,
       .secondary:hover,
       .link-button:hover,
+      .theme-button:hover,
       .history-item:hover {
         transform: translateY(-1px);
       }
@@ -171,19 +201,19 @@
         gap: 8px;
         padding: 7px 12px;
         border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--panel-border);
+        background: var(--surface-3);
         color: var(--text-soft);
         font-size: 0.85rem;
       }
 
       .chip[data-tone='success'] {
-        color: #052015;
+        color: #ffffff;
         background: var(--success);
       }
 
       .chip[data-tone='warning'] {
-        color: #201604;
+        color: #ffffff;
         background: var(--warning);
       }
 
@@ -194,11 +224,9 @@
         min-height: 220px;
         margin-top: 16px;
         padding: 20px;
-        border-radius: 24px;
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
-          rgba(4, 8, 16, 0.85);
-        color: #fff;
+        border-radius: 18px;
+        background: var(--surface-3);
+        color: var(--text);
         font-size: clamp(1.3rem, 4vw, 3rem);
         font-weight: 800;
         letter-spacing: 0.03em;
@@ -208,7 +236,7 @@
       }
 
       .scan-output[data-empty='true'] {
-        color: rgba(245, 247, 251, 0.4);
+        color: var(--text-soft);
         font-size: clamp(1rem, 2.6vw, 1.4rem);
         font-weight: 600;
       }
@@ -244,10 +272,10 @@
         gap: 12px;
         width: 100%;
         padding: 14px 16px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 18px;
-        background: rgba(255, 255, 255, 0.04);
-        color: #fff;
+        border: 1px solid var(--panel-border);
+        border-radius: 16px;
+        background: var(--surface-2);
+        color: var(--text);
         text-align: left;
       }
 
@@ -261,7 +289,7 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        color: rgba(245, 247, 251, 0.92);
+        color: var(--text);
       }
 
       .history-copy {
@@ -269,27 +297,41 @@
         font-size: 0.9rem;
       }
 
+      .status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .theme-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .theme-button span {
+        font-size: 0.9rem;
+      }
+
       @media (max-width: 860px) {
         .workspace {
           grid-template-columns: 1fr;
-        }
-
-        .hero h1 {
-          max-width: 100%;
         }
       }
 
       @media (max-width: 640px) {
         .shell {
-          width: min(100%, calc(100% - 20px));
-          padding-top: 16px;
+          width: min(100%, calc(100% - 16px));
+          padding-top: 12px;
         }
 
         .editor-panel,
         .display-panel,
         .history-panel {
-          padding: 18px;
-          border-radius: 22px;
+          padding: 16px;
+          border-radius: 16px;
         }
 
         .history-item {
@@ -308,6 +350,7 @@
     <script>
       const STORAGE_KEY = 'lector-qr:last-scan'
       const HISTORY_KEY = 'lector-qr:history'
+      const THEME_KEY = 'lector-qr:theme'
       const MAX_HISTORY = 6
       const ROOM_NAME = 'lector-principal'
       const API_URL = `/api/scan-state?room=${encodeURIComponent(ROOM_NAME)}`
@@ -316,6 +359,13 @@
 
       app.innerHTML = `
         <main class="shell">
+          <div class="topbar">
+            <button id="theme-toggle" class="theme-button" type="button" aria-label="Cambiar tema">
+              <span id="theme-icon">☾</span>
+              <span id="theme-label">Oscuro</span>
+            </button>
+          </div>
+
           <section class="workspace">
             <div class="panel editor-panel">
               <label class="field-label" for="scan-input">Último escaneo</label>
@@ -327,7 +377,7 @@
             </div>
 
             <div class="panel display-panel">
-              <div class="panel-head">
+              <div class="status-row">
                 <span class="field-label">Vista instantánea</span>
                 <span id="status-chip" class="chip">Listo</span>
               </div>
@@ -354,10 +404,23 @@
       const clearHistoryButton = document.querySelector('#clear-history')
       const historyList = document.querySelector('#history-list')
       const statusChip = document.querySelector('#status-chip')
+      const themeToggle = document.querySelector('#theme-toggle')
+      const themeIcon = document.querySelector('#theme-icon')
+      const themeLabel = document.querySelector('#theme-label')
 
       let pollTimer = null
       let suppressBroadcast = false
       let lastSeenValue = ''
+
+      const applyTheme = (theme) => {
+        const nextTheme = theme === 'light' ? 'light' : 'dark'
+        document.body.dataset.theme = nextTheme
+        localStorage.setItem(THEME_KEY, nextTheme)
+        themeIcon.textContent = nextTheme === 'light' ? '☀' : '☾'
+        themeLabel.textContent = nextTheme === 'light' ? 'Claro' : 'Oscuro'
+      }
+
+      applyTheme(localStorage.getItem(THEME_KEY) || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'))
 
       const readHistory = () => {
         try {
@@ -581,6 +644,11 @@
       clearHistoryButton.addEventListener('click', () => {
         localStorage.removeItem(HISTORY_KEY)
         renderHistory()
+      })
+
+      themeToggle.addEventListener('click', () => {
+        const currentTheme = document.body.dataset.theme === 'light' ? 'light' : 'dark'
+        applyTheme(currentTheme === 'light' ? 'dark' : 'light')
       })
 
       window.addEventListener('beforeunload', stopPolling)
