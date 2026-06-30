@@ -506,7 +506,7 @@
       }
 
       const pushRemoteValue = async (value) => {
-        const clientData = supabaseClient ? { client: supabaseClient, room: roomNameInput.value.trim() || 'lector-principal' } : getClient()
+        const clientData = supabaseClient ? { client: supabaseClient, room: ROOM_NAME } : getClient()
         const trimmed = value.trim()
 
         if (!trimmed) {
@@ -535,7 +535,7 @@
       }
 
       const loadRemoteState = async () => {
-        const clientData = supabaseClient ? { client: supabaseClient, room: roomNameInput.value.trim() || 'lector-principal' } : getClient()
+        const clientData = supabaseClient ? { client: supabaseClient, room: ROOM_NAME } : getClient()
         const { data, error } = await clientData.client.from('scan_state').select('value').eq('id', clientData.room || ROW_ID).maybeSingle()
 
         if (error) {
@@ -578,13 +578,13 @@
               if (nextValue) {
                 applyRemoteState(nextValue)
                 rememberScan(nextValue)
-                setConnectionStatus('En vivo', 'success')
+                setStatus('En vivo', 'success')
               }
             },
           )
           .subscribe((state) => {
             if (state === 'SUBSCRIBED') {
-              setConnectionStatus('En vivo', 'success')
+              setStatus('En vivo', 'success')
             }
           })
 
