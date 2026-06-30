@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Lector rápido en vivo</title>
+    <title>Lector</title>
     <meta
       name="description"
       content="Pega el último escaneo y véalo al instante en el PC y el móvil con sincronización en tiempo real."
@@ -67,43 +67,11 @@
         padding: 32px 0 40px;
       }
 
-      .hero {
-        padding: 24px 0 28px;
-      }
-
-      .eyebrow {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 7px 12px;
-        border: 1px solid var(--panel-border);
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.05);
-        color: var(--accent);
-        font-size: 0.82rem;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-      }
-
-      .hero h1 {
-        margin: 18px 0 10px;
-        max-width: 14ch;
-        font-size: clamp(2.4rem, 8vw, 5.2rem);
-        line-height: 0.95;
-        letter-spacing: -0.05em;
-      }
-
-      .hero p {
-        max-width: 60ch;
-        margin: 0;
-        color: var(--text-soft);
-        font-size: 1.02rem;
-      }
-
       .workspace {
         display: grid;
-        grid-template-columns: 1.1fr 0.9fr;
+        grid-template-columns: 1fr 0.8fr;
         gap: 20px;
+        padding-top: 18px;
       }
 
       .panel {
@@ -348,15 +316,6 @@
 
       app.innerHTML = `
         <main class="shell">
-          <section class="hero">
-            <div class="eyebrow">Captura rápida</div>
-            <h1>Pega el último escaneo y cópialo al instante.</h1>
-            <p>
-              Pensado para cuando el móvil te devuelve el código y necesitas verlo grande,
-              copiarlo y seguir trabajando sin perder tiempo.
-            </p>
-          </section>
-
           <section class="workspace">
             <div class="panel editor-panel">
               <label class="field-label" for="scan-input">Último escaneo</label>
@@ -378,8 +337,6 @@
                 <span>Haz clic en un elemento del historial para recuperarlo.</span>
               </div>
             </div>
-          </section>
-
           <section class="panel history-panel">
             <div class="panel-head">
               <span class="field-label">Historial reciente</span>
