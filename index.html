@@ -88,8 +88,15 @@
       .topbar {
         display: flex;
         align-items: center;
-        justify-content: flex-end;
+        justify-content: space-between;
+        gap: 12px;
         padding-bottom: 14px;
+      }
+
+      .topbar-group {
+        display: flex;
+        gap: 10px;
+        align-items: center;
       }
 
       .workspace {
@@ -311,6 +318,19 @@
         gap: 8px;
       }
 
+      .lock-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--surface-3);
+        color: var(--text);
+      }
+
+      .lock-button[data-active='true'] {
+        background: var(--accent);
+        color: #fff;
+      }
+
       .theme-button span {
         font-size: 0.9rem;
       }
@@ -360,6 +380,12 @@
       app.innerHTML = `
         <main class="shell">
           <div class="topbar">
+            <div class="topbar-group">
+              <button id="lock-toggle" class="lock-button" type="button" aria-label="Bloquear escritura">
+                <span id="lock-icon">🔓</span>
+                <span id="lock-label">Escritura</span>
+              </button>
+            </div>
             <button id="theme-toggle" class="theme-button" type="button" aria-label="Cambiar tema">
               <span id="theme-icon">☾</span>
               <span id="theme-label">Oscuro</span>
@@ -372,7 +398,6 @@
               <textarea id="scan-input" rows="4" spellcheck="false" placeholder="Pega aquí el código de barras o QR..."></textarea>
               <div class="actions">
                 <button id="paste-button" class="secondary" type="button">Pegar texto</button>
-                <button id="copy-button" class="primary" type="button">Copiar texto</button>
                 <button id="clear-button" class="secondary" type="button">Limpiar</button>
               </div>
             </div>
@@ -383,6 +408,9 @@
                 <span id="status-chip" class="chip">Listo</span>
               </div>
               <output id="scan-output" class="scan-output" aria-live="polite">Pega un código para verlo aquí.</output>
+              <div class="actions">
+                <button id="copy-button" class="primary" type="button">Copiar texto</button>
+              </div>
               <div class="meta">
                 <span>Se sincroniza en tiempo real entre todos los dispositivos con la misma sala.</span>
                 <span>Haz clic en un elemento del historial para recuperarlo.</span>
@@ -406,6 +434,9 @@
       const clearHistoryButton = document.querySelector('#clear-history')
       const historyList = document.querySelector('#history-list')
       const statusChip = document.querySelector('#status-chip')
+      const lockToggle = document.querySelector('#lock-toggle')
+      const lockIcon = document.querySelector('#lock-icon')
+      const lockLabel = document.querySelector('#lock-label')
       const themeToggle = document.querySelector('#theme-toggle')
       const themeIcon = document.querySelector('#theme-icon')
       const themeLabel = document.querySelector('#theme-label')
@@ -413,6 +444,15 @@
       let pollTimer = null
       let suppressBroadcast = false
       let lastSeenValue = ''
+
+      const applyWriteLock = (locked) => {
+        const nextLocked = Boolean(locked)
+        input.disabled = nextLocked
+        lockToggle.dataset.active = String(nextLocked)
+        lockIcon.textContent = nextLocked ? '🔒' : '🔓'
+        lockLabel.textContent = nextLocked ? 'Bloqueado' : 'Escritura'
+        localStorage.setItem('lector-qr:locked', String(nextLocked))
+      }
 
       const applyTheme = (theme) => {
         const nextTheme = theme === 'light' ? 'light' : 'dark'
@@ -423,6 +463,7 @@
       }
 
       applyTheme(localStorage.getItem(THEME_KEY) || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'))
+      applyWriteLock(localStorage.getItem('lector-qr:locked') === 'true')
 
       const readHistory = () => {
         try {
@@ -668,6 +709,10 @@
       clearHistoryButton.addEventListener('click', () => {
         localStorage.removeItem(HISTORY_KEY)
         renderHistory()
+      })
+
+      lockToggle.addEventListener('click', () => {
+        applyWriteLock(input.disabled)
       })
 
       themeToggle.addEventListener('click', () => {
