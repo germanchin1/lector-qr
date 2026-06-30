@@ -3,12 +3,21 @@ const SUPABASE_ANON_KEY = 'sb_publishable_bHfu1gBERonn2ATMM5nYdw_X65P0Esu'
 const ROOM_NAME = 'lector-principal'
 
 module.exports = async function handler(request, response) {
-  response.setHeader('Access-Control-Allow-Origin', '*')
-  response.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-  response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, apikey, x-client-info')
+  const sendJson = (statusCode, payload) => {
+    response.statusCode = statusCode
+    response.setHeader('Content-Type', 'application/json')
+    response.setHeader('Access-Control-Allow-Origin', '*')
+    response.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, apikey, x-client-info')
+    response.end(JSON.stringify(payload))
+  }
 
   if (request.method === 'OPTIONS') {
-    response.status(204).end()
+    response.statusCode = 204
+    response.setHeader('Access-Control-Allow-Origin', '*')
+    response.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, apikey, x-client-info')
+    response.end()
     return
   }
 
@@ -32,7 +41,7 @@ module.exports = async function handler(request, response) {
       })
 
       const data = await supabaseResponse.json().catch(() => [])
-      response.status(supabaseResponse.ok ? 200 : supabaseResponse.status).json({
+      sendJson(supabaseResponse.ok ? 200 : supabaseResponse.status, {
         value: Array.isArray(data) && data[0] ? data[0].value : '',
       })
       return
@@ -43,7 +52,7 @@ module.exports = async function handler(request, response) {
       const value = typeof body.value === 'string' ? body.value.trim() : ''
 
       if (!value) {
-        response.status(400).json({ error: 'Missing value' })
+        sendJson(400, { error: 'Missing value' })
         return
       }
 
@@ -58,12 +67,12 @@ module.exports = async function handler(request, response) {
       })
 
       const payload = await upsertResponse.json().catch(() => ({}))
-      response.status(upsertResponse.ok ? 200 : upsertResponse.status).json(payload)
+      sendJson(upsertResponse.ok ? 200 : upsertResponse.status, payload)
       return
     }
 
-    response.status(405).json({ error: 'Method not allowed' })
+    sendJson(405, { error: 'Method not allowed' })
   } catch (error) {
-    response.status(500).json({ error: error.message || 'Internal error' })
+    sendJson(500, { error: error.message || 'Internal error' })
   }
 }
