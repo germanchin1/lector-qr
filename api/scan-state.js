@@ -1,5 +1,12 @@
-const SUPABASE_URL = 'https://nchfongntpnbhlnmuwpr.supabase.co'
-const SUPABASE_ANON_KEY = 'sb_publishable_bHfu1gBERonn2ATMM5nYdw_X65P0Esu'
+let sharedState = globalThis.__LECTOR_QR_SHARED_STATE__
+
+if (!sharedState) {
+  sharedState = globalThis.__LECTOR_QR_SHARED_STATE__ = {
+    value: '',
+    updatedAt: '',
+  }
+}
+
 const ROOM_NAME = 'lector-principal'
 
 module.exports = async function handler(request, response) {
@@ -21,28 +28,12 @@ module.exports = async function handler(request, response) {
     return
   }
 
-  const baseUrl = `${SUPABASE_URL}/rest/v1/scan_state`
-  const headers = {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    'Content-Type': 'application/json',
-    Prefer: 'return=representation',
-  }
-
   try {
     if (request.method === 'GET') {
-      const url = `${baseUrl}?select=value&id=eq.${encodeURIComponent(ROOM_NAME)}&limit=1`
-      const supabaseResponse = await fetch(url, {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          Accept: 'application/json',
-        },
-      })
-
-      const data = await supabaseResponse.json().catch(() => [])
-      sendJson(supabaseResponse.ok ? 200 : supabaseResponse.status, {
-        value: Array.isArray(data) && data[0] ? data[0].value : '',
+      sendJson(200, {
+        value: sharedState.value,
+        updatedAt: sharedState.updatedAt,
+        room: ROOM_NAME,
       })
       return
     }
@@ -56,18 +47,15 @@ module.exports = async function handler(request, response) {
         return
       }
 
-      const upsertResponse = await fetch(baseUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          id: ROOM_NAME,
-          value,
-          updated_at: new Date().toISOString(),
-        }),
-      })
+      sharedState.value = value
+      sharedState.updatedAt = new Date().toISOString()
 
-      const payload = await upsertResponse.json().catch(() => ({}))
-      sendJson(upsertResponse.ok ? 200 : upsertResponse.status, payload)
+      sendJson(200, {
+        ok: true,
+        value: sharedState.value,
+        updatedAt: sharedState.updatedAt,
+        room: ROOM_NAME,
+      })
       return
     }
 
