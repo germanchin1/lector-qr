@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lector rápido en vivo</title>
+    <meta
+      name="description"
+      content="Pega el último escaneo y véalo al instante en el PC y el móvil con sincronización en tiempo real."
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Segoe UI Variable", "Aptos", "Trebuchet MS", sans-serif;
+        line-height: 1.5;
+        font-weight: 400;
+        color: #f5f7fb;
+        background:
+          radial-gradient(circle at top, rgba(255, 196, 87, 0.2), transparent 32%),
+          radial-gradient(circle at right, rgba(93, 129, 255, 0.2), transparent 28%),
+          linear-gradient(135deg, #0a1020 0%, #0d1428 45%, #090d16 100%);
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        --panel: rgba(10, 16, 32, 0.72);
+        --panel-border: rgba(255, 255, 255, 0.1);
+        --text-soft: rgba(245, 247, 251, 0.72);
+        --accent: #ffcc66;
+        --accent-strong: #7fb1ff;
+        --success: #77f0b6;
+        --warning: #ffd18a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-width: 320px;
+        min-height: 100%;
+      }
+
+      body {
+        min-height: 100vh;
+        background-attachment: fixed;
+      }
+
+      button,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      #app {
+        min-height: 100vh;
+      }
+
+      .shell {
+        width: min(1120px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0 40px;
+      }
+
+      .hero {
+        padding: 24px 0 28px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        border: 1px solid var(--panel-border);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--accent);
+        font-size: 0.82rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .hero h1 {
+        margin: 18px 0 10px;
+        max-width: 14ch;
+        font-size: clamp(2.4rem, 8vw, 5.2rem);
+        line-height: 0.95;
+        letter-spacing: -0.05em;
+      }
+
+      .hero p {
+        max-width: 60ch;
+        margin: 0;
+        color: var(--text-soft);
+        font-size: 1.02rem;
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 20px;
+      }
+
+      .panel {
+        border: 1px solid var(--panel-border);
+        border-radius: 28px;
+        background: var(--panel);
+        backdrop-filter: blur(18px);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+      }
+
+      .editor-panel,
+      .display-panel,
+      .history-panel {
+        padding: 22px;
+      }
+
+      .field-label {
+        font-size: 0.82rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--text-soft);
+      }
+
+      #scan-input {
+        width: 100%;
+        min-height: 180px;
+        margin-top: 14px;
+        padding: 18px 20px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 22px;
+        background: rgba(7, 12, 24, 0.86);
+        color: #fff;
+        resize: vertical;
+        outline: none;
+        transition: border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+      }
+
+      #scan-input::placeholder {
+        color: rgba(245, 247, 251, 0.38);
+      }
+
+      #scan-input:focus {
+        border-color: rgba(127, 177, 255, 0.55);
+        box-shadow: 0 0 0 4px rgba(127, 177, 255, 0.15);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .primary,
+      .secondary,
+      .link-button {
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 18px;
+        transition: transform 140ms ease, background 140ms ease, color 140ms ease, opacity 140ms ease;
+      }
+
+      .primary {
+        background: linear-gradient(135deg, var(--accent) 0%, #ff9f6e 100%);
+        color: #121212;
+        font-weight: 700;
+      }
+
+      .secondary {
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+      }
+
+      .link-button {
+        padding-inline: 0;
+        background: transparent;
+        color: var(--accent-strong);
+      }
+
+      .primary:hover,
+      .secondary:hover,
+      .link-button:hover,
+      .history-item:hover {
+        transform: translateY(-1px);
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-soft);
+        font-size: 0.85rem;
+      }
+
+      .chip[data-tone='success'] {
+        color: #052015;
+        background: var(--success);
+      }
+
+      .chip[data-tone='warning'] {
+        color: #201604;
+        background: var(--warning);
+      }
+
+      .scan-output {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 220px;
+        margin-top: 16px;
+        padding: 20px;
+        border-radius: 24px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+          rgba(4, 8, 16, 0.85);
+        color: #fff;
+        font-size: clamp(1.3rem, 4vw, 3rem);
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-align: center;
+        word-break: break-word;
+        white-space: pre-wrap;
+      }
+
+      .scan-output[data-empty='true'] {
+        color: rgba(245, 247, 251, 0.4);
+        font-size: clamp(1rem, 2.6vw, 1.4rem);
+        font-weight: 600;
+      }
+
+      .meta {
+        display: grid;
+        gap: 6px;
+        margin-top: 16px;
+        color: var(--text-soft);
+        font-size: 0.92rem;
+      }
+
+      .config-panel {
+        margin-top: 20px;
+        padding: 22px;
+      }
+
+      .config-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .config-grid input {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(7, 12, 24, 0.86);
+        color: #fff;
+        outline: none;
+      }
+
+      .config-grid input::placeholder {
+        color: rgba(245, 247, 251, 0.38);
+      }
+
+      .config-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .notice {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(127, 177, 255, 0.12);
+        color: rgba(245, 247, 251, 0.92);
+        font-size: 0.92rem;
+      }
+
+      .notice strong {
+        color: #fff;
+      }
+
+      .history-panel {
+        margin-top: 20px;
+      }
+
+      .history-list {
+        display: grid;
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .history-empty {
+        margin: 0;
+        padding: 12px 0 4px;
+        color: var(--text-soft);
+      }
+
+      .history-item {
+        display: grid;
+        grid-template-columns: 56px 1fr auto;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 14px 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.04);
+        color: #fff;
+        text-align: left;
+      }
+
+      .history-index {
+        color: var(--accent);
+        font-weight: 700;
+        letter-spacing: 0.08em;
+      }
+
+      .history-value {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: rgba(245, 247, 251, 0.92);
+      }
+
+      .history-copy {
+        color: var(--accent-strong);
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 860px) {
+        .workspace {
+          grid-template-columns: 1fr;
+        }
+
+        .hero h1 {
+          max-width: 100%;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .shell {
+          width: min(100%, calc(100% - 20px));
+          padding-top: 16px;
+        }
+
+        .editor-panel,
+        .display-panel,
+        .history-panel {
+          padding: 18px;
+          border-radius: 22px;
+        }
+
+        .history-item {
+          grid-template-columns: 1fr;
+        }
+
+        .history-index,
+        .history-copy {
+          font-size: 0.8rem;
+        }
+
+        .config-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module">
+      import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+      const STORAGE_KEY = 'lector-qr:last-scan'
+      const HISTORY_KEY = 'lector-qr:history'
+      const MAX_HISTORY = 6
+      const CONFIG_KEY = 'lector-qr:supabase-config'
+      const ROW_ID = 'main'
+
+      const app = document.querySelector('#app')
+
+      app.innerHTML = `
+        <main class="shell">
+          <section class="hero">
+            <div class="eyebrow">Captura rápida</div>
+            <h1>Pega el último escaneo y cópialo al instante.</h1>
+            <p>
+              Pensado para cuando el móvil te devuelve el código y necesitas verlo grande,
+              copiarlo y seguir trabajando sin perder tiempo.
+            </p>
+          </section>
+
+          <section class="workspace">
+            <div class="panel editor-panel">
+              <label class="field-label" for="scan-input">Último escaneo</label>
+              <textarea id="scan-input" rows="4" spellcheck="false" placeholder="Pega aquí el código de barras o QR..."></textarea>
+              <div class="actions">
+                <button id="copy-button" class="primary" type="button">Copiar texto</button>
+                <button id="clear-button" class="secondary" type="button">Limpiar</button>
+              </div>
+            </div>
+
+            <div class="panel display-panel">
+              <div class="panel-head">
+                <span class="field-label">Vista instantánea</span>
+                <span id="status-chip" class="chip">Listo</span>
+              </div>
+              <output id="scan-output" class="scan-output" aria-live="polite">Pega un código para verlo aquí.</output>
+              <div class="meta">
+                <span>Se sincroniza en tiempo real entre todos los dispositivos con la misma configuración.</span>
+                <span>Haz clic en un elemento del historial para recuperarlo.</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel config-panel">
+            <div class="panel-head">
+              <span class="field-label">Sincronización Supabase</span>
+              <span id="connection-chip" class="chip">Sin configurar</span>
+            </div>
+            <div class="config-grid">
+              <input id="supabase-url" type="url" placeholder="Supabase URL" />
+              <input id="supabase-key" type="password" placeholder="Supabase anon key" />
+              <input id="room-name" type="text" placeholder="Nombre de la sala" value="lector-principal" />
+            </div>
+            <div class="config-actions">
+              <button id="save-config" class="primary" type="button">Guardar configuración</button>
+              <button id="connect-button" class="secondary" type="button">Conectar ahora</button>
+            </div>
+            <div class="notice">
+              <strong>Importante:</strong> en el móvil y en el PC usa la misma URL, la misma key y el mismo nombre de sala.
+            </div>
+          </section>
+
+          <section class="panel history-panel">
+            <div class="panel-head">
+              <span class="field-label">Historial reciente</span>
+              <button id="clear-history" class="link-button" type="button">Vaciar historial</button>
+            </div>
+            <div id="history-list" class="history-list"></div>
+          </section>
+        </main>
+      `
+
+      const input = document.querySelector('#scan-input')
+      const output = document.querySelector('#scan-output')
+      const copyButton = document.querySelector('#copy-button')
+      const clearButton = document.querySelector('#clear-button')
+      const clearHistoryButton = document.querySelector('#clear-history')
+      const historyList = document.querySelector('#history-list')
+      const statusChip = document.querySelector('#status-chip')
+      const connectionChip = document.querySelector('#connection-chip')
+      const supabaseUrlInput = document.querySelector('#supabase-url')
+      const supabaseKeyInput = document.querySelector('#supabase-key')
+      const roomNameInput = document.querySelector('#room-name')
+      const saveConfigButton = document.querySelector('#save-config')
+      const connectButton = document.querySelector('#connect-button')
+
+      let supabaseClient = null
+      let realtimeChannel = null
+      let suppressLocalBroadcast = false
+
+      const readHistory = () => {
+        try {
+          const raw = localStorage.getItem(HISTORY_KEY)
+          const parsed = raw ? JSON.parse(raw) : []
+          return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : []
+        } catch {
+          return []
+        }
+      }
+
+      const setConnectionStatus = (message, tone = 'ready') => {
+        connectionChip.textContent = message
+        connectionChip.dataset.tone = tone
+      }
+
+      const getConfig = () => {
+        try {
+          const raw = localStorage.getItem(CONFIG_KEY)
+          return raw ? JSON.parse(raw) : null
+        } catch {
+          return null
+        }
+      }
+
+      const saveConfig = () => {
+        const config = {
+          url: supabaseUrlInput.value.trim(),
+          key: supabaseKeyInput.value.trim(),
+          room: roomNameInput.value.trim() || 'lector-principal',
+        }
+
+        localStorage.setItem(CONFIG_KEY, JSON.stringify(config))
+        setConnectionStatus('Configurado', 'success')
+        return config
+      }
+
+      const loadConfig = () => {
+        const config = getConfig()
+
+        if (!config) {
+          roomNameInput.value = 'lector-principal'
+          return null
+        }
+
+        supabaseUrlInput.value = config.url ?? ''
+        supabaseKeyInput.value = config.key ?? ''
+        roomNameInput.value = config.room ?? 'lector-principal'
+        return config
+      }
+
+      const getClient = () => {
+        const config = saveConfig()
+
+        if (!config.url || !config.key) {
+          throw new Error('Faltan la URL o la anon key de Supabase.')
+        }
+
+        supabaseClient = createClient(config.url, config.key)
+        return { client: supabaseClient, room: config.room }
+      }
+
+      const rememberScan = (value) => {
+        const trimmed = value.trim()
+
+        if (!trimmed) {
+          return
+        }
+
+        const currentHistory = readHistory().filter((item) => item !== trimmed)
+        const nextHistory = [trimmed, ...currentHistory].slice(0, MAX_HISTORY)
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(nextHistory))
+        renderHistory()
+      }
+
+      const setStatus = (message, tone = 'ready') => {
+        statusChip.textContent = message
+        statusChip.dataset.tone = tone
+      }
+
+      const updateOutput = (value) => {
+        const trimmed = value.trim()
+
+        if (trimmed.length === 0) {
+          output.textContent = 'Pega un código para verlo aquí.'
+          output.dataset.empty = 'true'
+          setStatus('Listo')
+          return
+        }
+
+        output.textContent = trimmed
+        output.dataset.empty = 'false'
+        setStatus('En pantalla', 'success')
+      }
+
+      const syncValue = (value, persist = true) => {
+        input.value = value
+        updateOutput(value)
+
+        if (persist) {
+          localStorage.setItem(STORAGE_KEY, value)
+        }
+      }
+
+      const renderHistory = () => {
+        const history = readHistory()
+        historyList.innerHTML = ''
+
+        if (history.length === 0) {
+          historyList.innerHTML = '<p class="history-empty">Todavía no hay códigos guardados.</p>'
+          return
+        }
+
+        history.forEach((item, index) => {
+          const button = document.createElement('button')
+          button.type = 'button'
+          button.className = 'history-item'
+          button.innerHTML = `
+            <span class="history-index">${String(index + 1).padStart(2, '0')}</span>
+            <span class="history-value"></span>
+            <span class="history-copy">Copiar</span>
+          `
+
+          const valueNode = button.querySelector('.history-value')
+          if (valueNode) {
+            valueNode.textContent = item
+          }
+
+          button.addEventListener('click', async () => {
+            syncValue(item)
+            try {
+              await navigator.clipboard.writeText(item)
+              setStatus('Copiado', 'success')
+            } catch {
+              setStatus('No se pudo copiar', 'warning')
+            }
+          })
+
+          historyList.appendChild(button)
+        })
+      }
+
+      const pushRemoteValue = async (value) => {
+        const clientData = supabaseClient ? { client: supabaseClient, room: roomNameInput.value.trim() || 'lector-principal' } : getClient()
+        const trimmed = value.trim()
+
+        if (!trimmed) {
+          return
+        }
+
+        const payload = {
+          id: clientData.room || ROW_ID,
+          value: trimmed,
+          updated_at: new Date().toISOString(),
+        }
+
+        const { error } = await clientData.client.from('scan_state').upsert(payload, { onConflict: 'id' })
+
+        if (error) {
+          throw error
+        }
+
+        rememberScan(trimmed)
+      }
+
+      const applyRemoteState = (value) => {
+        suppressLocalBroadcast = true
+        syncValue(value, true)
+        suppressLocalBroadcast = false
+      }
+
+      const loadRemoteState = async () => {
+        const clientData = supabaseClient ? { client: supabaseClient, room: roomNameInput.value.trim() || 'lector-principal' } : getClient()
+        const { data, error } = await clientData.client.from('scan_state').select('value').eq('id', clientData.room || ROW_ID).maybeSingle()
+
+        if (error) {
+          throw error
+        }
+
+        if (data?.value) {
+          applyRemoteState(data.value)
+          rememberScan(data.value)
+        }
+      }
+
+      const disconnectRealtime = () => {
+        if (realtimeChannel && supabaseClient) {
+          supabaseClient.removeChannel(realtimeChannel)
+        }
+
+        realtimeChannel = null
+      }
+
+      const connectRealtime = async () => {
+        const { client, room } = getClient()
+
+        disconnectRealtime()
+
+        await loadRemoteState()
+
+        realtimeChannel = client
+          .channel(`scan-state:${room}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'scan_state',
+              filter: `id=eq.${room}`,
+            },
+            (payload) => {
+              const nextValue = payload.new?.value ?? ''
+              if (nextValue) {
+                applyRemoteState(nextValue)
+                rememberScan(nextValue)
+                setConnectionStatus('En vivo', 'success')
+              }
+            },
+          )
+          .subscribe((state) => {
+            if (state === 'SUBSCRIBED') {
+              setConnectionStatus('En vivo', 'success')
+            }
+          })
+
+        return true
+      }
+
+      input.value = localStorage.getItem(STORAGE_KEY) ?? ''
+      syncValue(input.value, false)
+      renderHistory()
+      loadConfig()
+
+      const initialConfig = getConfig()
+
+      if (initialConfig?.url && initialConfig?.key) {
+        connectRealtime().catch(() => {
+          setConnectionStatus('Sin conexión', 'warning')
+        })
+      }
+
+      input.addEventListener('input', (event) => {
+        syncValue(input.value)
+
+        if (!suppressLocalBroadcast && (event instanceof InputEvent && event.inputType === 'insertFromPaste')) {
+          rememberScan(input.value)
+          pushRemoteValue(input.value).catch(() => {
+            setStatus('Sin conexión', 'warning')
+            setConnectionStatus('Sin conexión', 'warning')
+          })
+        }
+      })
+
+      copyButton.addEventListener('click', async () => {
+        const value = input.value.trim()
+
+        if (!value) {
+          setStatus('Nada que copiar', 'warning')
+          input.focus()
+          return
+        }
+
+        try {
+          await navigator.clipboard.writeText(value)
+          setStatus('Copiado', 'success')
+          rememberScan(value)
+          pushRemoteValue(value).catch(() => {
+            setConnectionStatus('Sin conexión', 'warning')
+          })
+        } catch {
+          setStatus('No se pudo copiar', 'warning')
+        }
+      })
+
+      clearButton.addEventListener('click', () => {
+        syncValue('')
+        localStorage.removeItem(STORAGE_KEY)
+        input.focus()
+      })
+
+      clearHistoryButton.addEventListener('click', () => {
+        localStorage.removeItem(HISTORY_KEY)
+        renderHistory()
+      })
+
+      saveConfigButton.addEventListener('click', () => {
+        try {
+          saveConfig()
+          setStatus('Configuración guardada', 'success')
+          setConnectionStatus('Listo para conectar', 'ready')
+        } catch {
+          setStatus('Configura Supabase', 'warning')
+        }
+      })
+
+      connectButton.addEventListener('click', async () => {
+        try {
+          await connectRealtime()
+          setStatus('Conectado', 'success')
+        } catch {
+          setStatus('Revisa Supabase', 'warning')
+          setConnectionStatus('Sin conexión', 'warning')
+        }
+      })
+
+      input.focus()
+    </script>
+  </body>
+</html>
